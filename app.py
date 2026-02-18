@@ -1,3 +1,4 @@
+
 import os
 import streamlit as st
 
@@ -23,13 +24,18 @@ def load_models():
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
+    # IMPORTANT: FLAN-T5 uses text2text-generation
     llm = pipeline(
-        "text-generation",
+        "text2text-generation",
         model="google/flan-t5-base",
         max_new_tokens=256
     )
 
     return embeddings, llm
+
+
+# LOAD MODELS ONCE
+embeddings, llm = load_models()
 
 
 # ----------------------------
@@ -43,7 +49,7 @@ def load_vectorstore():
         and os.path.exists("index/index.pkl")
     ):
         raise RuntimeError(
-            "FAISS index not found. Make sure index folder exists."
+            "FAISS index not found. Upload index folder."
         )
 
     return FAISS.load_local(

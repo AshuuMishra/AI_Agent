@@ -1,4 +1,3 @@
-
 import os
 import streamlit as st
 
@@ -7,27 +6,27 @@ from langchain_community.vectorstores import FAISS
 from transformers import pipeline
 
 # ----------------------------
-# CONFIG
+# PAGE CONFIG
 # ----------------------------
 st.set_page_config(page_title="ScholarAI", layout="wide")
 
-INDEX_PATH = "index"   # index.faiss + index.pkl must exist
+INDEX_PATH = "index"
 
 
 # ----------------------------
-# LOAD MODELS (ONCE)
+# LOAD MODELS (CACHED)
 # ----------------------------
 @st.cache_resource
 def load_models():
+
     embeddings = HuggingFaceEmbeddings(
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
     llm = pipeline(
-        "text-generation",
+        "text2text-generation",   # CORRECT TASK
         model="google/flan-t5-base",
-        max_new_tokens=256,
-        do_sample=False
+        max_new_tokens=256
     )
 
     return embeddings, llm
@@ -37,16 +36,17 @@ embeddings, llm = load_models()
 
 
 # ----------------------------
-# LOAD VECTOR STORE (ONLY LOAD)
+# LOAD FAISS INDEX
 # ----------------------------
 @st.cache_resource
 def load_vectorstore():
+
     if not (
-        os.path.exists("index.faiss")
-        and os.path.exists("index.pkl")
+        os.path.exists("index/index.faiss")
+        and os.path.exists("index/index.pkl")
     ):
         raise RuntimeError(
-            "FAISS index not found. index.faiss and index.pkl must exist."
+            "FAISS index not found. Make sure index folder exists."
         )
 
     return FAISS.load_local(
@@ -64,6 +64,7 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 # CORE FUNCTIONS
 # ----------------------------
 def summarize_text(text):
+
     prompt = f"""
 Summarize the following research content into concise study notes.
 
@@ -76,11 +77,13 @@ Rules:
 Text:
 {text}
 """
+
     output = llm(prompt)[0]["generated_text"]
     return output.strip()
 
 
 def answer_question(question):
+
     docs = retriever.invoke(question)
 
     if not docs:
@@ -114,22 +117,22 @@ st.title("📚 ScholarAI — Research Paper Assistant")
 
 tab1, tab2 = st.tabs(["📝 Summarization", "❓ Q&A"])
 
+# ---- TAB 1: SUMMARIZER ----
 with tab1:
     st.subheader("Summarize Research Content")
 
-    input_text = st.text_area(
-        "Paste paper content",
-        height=250
-    )
+    input_text = st.text_area("Paste paper content", height=250)
 
     if st.button("Summarize"):
         if not input_text.strip():
             st.warning("Please provide text.")
         else:
             with st.spinner("Summarizing..."):
-                st.success(summarize_text(input_text))
+                result = summarize_text(input_text)
+                st.success(result)
 
 
+# ---- TAB 2: QA ----
 with tab2:
     st.subheader("Ask Questions (RAG)")
 
@@ -140,4 +143,5 @@ with tab2:
             st.warning("Please enter a question.")
         else:
             with st.spinner("Searching knowledge base..."):
-                st.success(answer_question(question))
+                result = answer_question(question)
+                st.success(result)

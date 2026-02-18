@@ -24,15 +24,12 @@ def load_models():
     )
 
     llm = pipeline(
-        "text2text-generation",   # CORRECT TASK
+        "text-generation",
         model="google/flan-t5-base",
         max_new_tokens=256
     )
 
     return embeddings, llm
-
-
-embeddings, llm = load_models()
 
 
 # ----------------------------

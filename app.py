@@ -24,9 +24,9 @@ def load_models():
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    # IMPORTANT: FLAN-T5 uses text2text-generation
+    # IMPORTANT: FLAN-T5 uses text-generation
     llm = pipeline(
-        "text2text-generation",
+        "text-generation",
         model="google/flan-t5-base",
         max_new_tokens=256
     )

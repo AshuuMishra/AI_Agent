@@ -9,7 +9,7 @@ from transformers import pipeline
 # ----------------------------
 # PAGE CONFIG
 # ----------------------------
-st.set_page_config(page_title="ScholarAI", layout="wide")
+st.set_page_config(page_title="EduAssist AI", layout="wide")
 
 INDEX_PATH = "index"
 
@@ -24,18 +24,24 @@ def load_models():
         model_name="sentence-transformers/all-MiniLM-L6-v2"
     )
 
-    # IMPORTANT: FLAN-T5 uses text-generation
-    llm = pipeline(
+    # Summarization model (lighter, faster)
+    summarizer_llm = pipeline(
         "text-generation",
         model="google/flan-t5-base",
+        max_new_tokens=200
+    )
+
+    # Q&A model (stronger reasoning)
+    qa_llm = pipeline(
+        "text-generation",
+        model="google/flan-t5-large",
         max_new_tokens=256
     )
 
-    return embeddings, llm
+    return embeddings, summarizer_llm, qa_llm
 
 
-# LOAD MODELS ONCE
-embeddings, llm = load_models()
+embeddings, summarizer_llm, qa_llm = load_models()
 
 
 # ----------------------------
@@ -49,7 +55,7 @@ def load_vectorstore():
         and os.path.exists("index/index.pkl")
     ):
         raise RuntimeError(
-            "FAISS index not found. Upload index folder."
+            "FAISS index not found. Upload the index folder with index.faiss and index.pkl"
         )
 
     return FAISS.load_local(
@@ -64,7 +70,7 @@ retriever = vectorstore.as_retriever(search_kwargs={"k": 4})
 
 
 # ----------------------------
-# CORE FUNCTIONS
+# SUMMARIZATION
 # ----------------------------
 def summarize_text(text):
 
@@ -81,10 +87,13 @@ Text:
 {text}
 """
 
-    output = llm(prompt)[0]["generated_text"]
+    output = summarizer_llm(prompt)[0]["generated_text"]
     return output.strip()
 
 
+# ----------------------------
+# QUESTION ANSWERING (RAG)
+# ----------------------------
 def answer_question(question):
 
     docs = retriever.invoke(question)
@@ -95,7 +104,7 @@ def answer_question(question):
     context = "\n\n".join(d.page_content for d in docs)
 
     prompt = f"""
-You are answering strictly from the given context.
+Answer the question using ONLY the context below.
 
 Context:
 {context}
@@ -104,12 +113,13 @@ Question:
 {question}
 
 Rules:
-- If the answer is not in the context, say:
+- If answer is not present in context, respond:
   "Not found in the provided material."
-- Be concise and factual.
+- Be concise
+- Do not hallucinate
 """
 
-    output = llm(prompt)[0]["generated_text"]
+    output = qa_llm(prompt)[0]["generated_text"]
     return output.strip()
 
 
@@ -120,7 +130,10 @@ st.title("📚 ScholarAI — Research Paper Assistant")
 
 tab1, tab2 = st.tabs(["📝 Summarization", "❓ Q&A"])
 
-# ---- TAB 1: SUMMARIZER ----
+
+# ----------------------------
+# TAB 1: SUMMARIZER
+# ----------------------------
 with tab1:
     st.subheader("Summarize Research Content")
 
@@ -135,7 +148,9 @@ with tab1:
                 st.success(result)
 
 
-# ---- TAB 2: QA ----
+# ----------------------------
+# TAB 2: Q&A
+# ----------------------------
 with tab2:
     st.subheader("Ask Questions (RAG)")
 

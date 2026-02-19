@@ -125,6 +125,7 @@ Study-ready output
 💻 Installation
 1️⃣ Clone the repo
 git clone https://github.com/AshuuMishra/AI_Agent
+Deployed App link - https://aiagent-t6yd4aewjbx7mbdaz7yrpd.streamlit.app/
 cd ScholarAI
 
 2️⃣ Install dependencies
